@@ -62,6 +62,7 @@ my $targetinf=readinf("$prefix.draw.inf");
 ###creat output gff file
 writefile("","$prefix.Check.gff");
 writefile("","$prefix.NoSV.gff");
+writefile("","$prefix.NoMatch.gff");
 writefile("","$prefix.LocalAssembly.gff");
 writefile("","$prefix.Manual.gff");
 ###
@@ -127,6 +128,7 @@ foreach my $p (sort keys %$sv){
          print CK "$temp\t$indel\t$type{$indel}\n";
       close CK;
       open NO, ">>$prefix.NoSV.gff" or die "$!";
+      open NM, ">>$prefix.NoMatch.gff" or die "$!";
       open LOCAL, ">>$prefix.LocalAssembly.gff" or die "$!";
       open MANUAL, ">>$prefix.Manual.gff" or die "$!";
       if ($indel > 0){ ### if indel exists
@@ -138,9 +140,12 @@ foreach my $p (sort keys %$sv){
             $sv->{$p}->[8].="INDEL=Deletion;Seq=$sequence;";
             my $line=join("\t",@{$sv->{$p}});
             print LOCAL "$line\n";
-         }else{ ### indel =3, need manual check
+         }elsif($indel == 3){ ### indel =3, need manual check
             my $line=join("\t",@{$sv->{$p}});
             print MANUAL "$line\n";
+         }elsif($indel == 4){
+            my $line=join("\t",@{$sv->{$p}});
+            print NM "$line\n";
          }
       }else{
          my $line=join("\t",@{$sv->{$p}});
@@ -155,6 +160,7 @@ foreach(sort {$a <=> $b} keys %summary){
       print STDERR "$_\t$summary{$_}\t$type{$_}\n";
 }
 sortfile("$prefix.NoSV.gff");
+sortfile("$prefix.NoMatch.gff");
 sortfile("$prefix.LocalAssembly.gff");
 sortfile("$prefix.Manual.gff");
 sortfile("$prefix.Check.gff");
@@ -364,13 +370,19 @@ my ($align,$target,$query)=@_;
 my $indel=3;
 my $sequence="NA";
 my $flank = 2000;
-my $jun   = 1000;
+my $jun   = 500;
+my $jun1  = 1000;
 my $refseq=getfastaseq($query);
+if (exists $refseq->{'__'}){ # not target sequence, we set to 4.
+   $indel = 4;
+}
 $/="\n\n\n";
+my $count = 0;
 open IN, "$align" or die "$!";
 while(<IN>){
    my $block=$_;
    while($block=~/(MATCH.*Alignment time is .*? s)/sg){  ### match every alignment block for each contig
+      $count += 1;
       #print "MATCH\n$1\nEND\n";
       my $match=$1;
       my $contig;
@@ -380,36 +392,20 @@ while(<IN>){
       }
       ### no excise
       if ($match=~/Alignment:\n first\s+seq =>\s+\[\s*(\d+)\,\s*(\d+)\]\n\s+second seq \=\> \s+\[\s*(\d+)\,\s*(\d+)\]\n/){
-         print "$1\t$2\t$3\t$4\n";
+         print "Not Excision: $1\t$2\t$3\t$4\n";
          if ($1 < $flank-$jun and $2 > $flank+$jun){ ### perfect alignment cover 1000 bp of breakpoint
-            $indel=0 unless ($indel == 1); ### indicate no SV exists
+            $indel=0; ### indicate no SV exists
          }
       ### excise
       }elsif($match=~/Alignment:\n first\s+seq =>\s+\[\s*(\d+)\,\s*(\d+)\] EXCISED REGION \[\s*(\d+)\,\s*(\d+)\]\n\s+second seq \=\> \s+\[\s*(\d+)\,\s*(\d+)\] EXCISED REGION \[\s*(\d+)\,\s*(\d+)\]\n/){
-         print "$1\t$2\t$3\t$4\t$5\t$6\t$7\t$8\n";
-         if ($1 < $flank-$jun and $4 > $flank+$jun){ ### excised alignment cover 200 bp of breakpoint
-            if ($2 <= $flank+$jun and $2 >= $flank-$jun and $3 <= $flank+$jun and $3 >= $flank-$jun){ ### excise region cover 100 bp of breakpoint
-               print "SV Contig $contig: $6,$7\n";
-               $indel=1; ### indicate SV exists
-               my $seqlen=length $refseq->{$contig};
-               my $start=$6 < $7 ? $6 : $7;
-               my $len  =abs($7-$6+1);
-               $sequence=substr($refseq->{$contig},$start,$len);
-               my $gap;
-               while($sequence=~/(N+)/g){
-                  $gap+=length $1;
-               }
-               if ($gap > $len*0.7){
-                  $indel=3 unless ($indel == 1 or $indel == 0); ### too much unknown sequence in SV sequence, set to not sure
-               }elsif ($len < 20){
-                  $indel=0 unless ($indel == 1); ### insertion sequence too small, probably not a SV
-               }else{
-                  $indel=1;
-               }
-            }elsif(($1 <= $flank-$jun and $2 >= $flank+$jun) or ($3 <= $flank-$jun and $4 >= $flank+$jun)){
-               $indel=0 unless ($indel == 1); ### indicate no SV exists
+         print "Excised alignment found: $1\t$2\t$3\t$4\t$5\t$6\t$7\t$8\n";
+         if ($1 < $flank-$jun and $4 > $flank+$jun){ ### excised alignment cover 1000 bp of breakpoint
+            if (abs($3 - $2) < 100 and abs($7-$6) > 100){ ### query do not have insertion and target have insertion
+                $indel=1; ### indicate SV exists
+            }elsif(abs($3 - $2) < 100 and abs($7-$6) < 100){
+               $indel=0; ### indicate no SV exists
             }else{
-               $indel=3 unless ($indel == 1 or $indel == 0); ### indicate not sure
+               $indel=3; ### indicate not sure
             }
          }
       }
@@ -417,6 +413,10 @@ while(<IN>){
 }
 close IN;
 $/="\n";
-return ($indel,$sequence);
+if ($count >= 2){ # more than 2 alignment block, we manual check the alignment
+    return (3, $sequence);
+}else{ # only one alignment block, we trust the script
+    return ($indel,$sequence);
+}
 }
 

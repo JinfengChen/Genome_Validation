@@ -39,7 +39,7 @@ my $sv=readtable($opt{gff});
 my $seq=getfastaseq($opt{fa});
 my $genome=getfastaseq($opt{genome});
 my $len=getfastalen($opt{fa});
-my $flank=2000;
+my $flank=1000;
 
 
 my %type=(
@@ -55,7 +55,6 @@ $prefix.=".0";
 ###generate target inf from genome assembly
 `cut -f1,4,5 $opt{gff} > $prefix.table` unless (-e "$prefix.table");
 `perl table2inf_laV2_IR64.pl --table $prefix.table --project $prefix` unless (-e "$prefix.inf");
-#`perl table2inf_laV2_HEG4.pl --table $prefix.table --project $prefix` unless (-e "$prefix.inf");
 `grep "HEG4" $prefix.inf | awk '{len=\$8-\$7;if(len < 20000){print}}' > $prefix.draw.inf`;
 my $targetinf=readinf("$prefix.draw.inf");
 
@@ -78,7 +77,7 @@ foreach my $p (sort keys %$sv){
       ####Region sequence
       my $subseq=substr($seq->{$sv->{$p}->[0]},$start,$flank*2); 
       $subseq   =formatseq($subseq,100);
-      #print "$subseq\n";
+      print "$subseq\n";
       writefile(">$region\n$subseq\n","$opt{project}/$p/Region.fa");
       
       ####target sequence
@@ -301,7 +300,7 @@ my ($align,$target,$query)=@_;
 
 my $indel=3;
 my $sequence="NA";
-my $flank= 2000;
+
 my $refseq=getfastaseq($query);
 $/="\n\n\n";
 open IN, "$align" or die "$!";
@@ -318,14 +317,14 @@ while(<IN>){
       ### no excise
       if ($match=~/Alignment:\n first\s+seq =>\s+\[\s*(\d+)\,\s*(\d+)\]\n\s+second seq \=\> \s+\[\s*(\d+)\,\s*(\d+)\]\n/){
          print "$1\t$2\t$3\t$4\n";
-         if ($1 < $flank-100 and $2 > $flank+100){ ### perfect alignment cover 200 bp of breakpoint
+         if ($1 < 1000-100 and $2 > 1000+100){ ### perfect alignment cover 200 bp of breakpoint
             $indel=0 unless ($indel == 1); ### indicate no SV exists
          }
       ### excise
       }elsif($match=~/Alignment:\n first\s+seq =>\s+\[\s*(\d+)\,\s*(\d+)\] EXCISED REGION \[\s*(\d+)\,\s*(\d+)\]\n\s+second seq \=\> \s+\[\s*(\d+)\,\s*(\d+)\] EXCISED REGION \[\s*(\d+)\,\s*(\d+)\]\n/){
          print "$1\t$2\t$3\t$4\t$5\t$6\t$7\t$8\n";
-         if ($1 < $flank-100 and $4 > $flank+100){ ### excised alignment cover 200 bp of breakpoint
-            if ($2 <= $flank+100 and $2 >= $flank-100 and $3 <= $flank+100 and $3 >= $flank-100){ ### excise region cover 100 bp of breakpoint
+         if ($1 < 1000-100 and $4 > 1000+100){ ### excised alignment cover 200 bp of breakpoint
+            if ($2 <= 1000+100 and $2 >= 1000-100 and $3 <= 1000+100 and $3 >= 1000-100){ ### excise region cover 100 bp of breakpoint
                print "SV Contig $contig: $6,$7\n";
                $indel=1; ### indicate SV exists
                my $seqlen=length $refseq->{$contig};
@@ -342,7 +341,7 @@ while(<IN>){
                if ($len < 10){
                   $indel=0 unless ($indel == 1); ### insertion sequence too small, probably not a SV
                }
-            }elsif(($1 <= $flank-100 and $2 >= $flank+100) or ($3 <= $flank-100 and $4 >= $flank+100)){
+            }elsif(($1 <= 1000-100 and $2 >= 1000+100) or ($3 <= 1000-100 and $4 >= 1000+100)){
                $indel=0 unless ($indel == 1); ### indicate no SV exists
             }else{
                $indel=3 unless ($indel == 1 or $indel == 0); ### indicate not sure
@@ -363,8 +362,7 @@ my ($align,$target,$query)=@_;
 
 my $indel=3;
 my $sequence="NA";
-my $flank = 2000;
-my $jun   = 1000;
+
 my $refseq=getfastaseq($query);
 $/="\n\n\n";
 open IN, "$align" or die "$!";
@@ -381,16 +379,16 @@ while(<IN>){
       ### no excise
       if ($match=~/Alignment:\n first\s+seq =>\s+\[\s*(\d+)\,\s*(\d+)\]\n\s+second seq \=\> \s+\[\s*(\d+)\,\s*(\d+)\]\n/){
          print "$1\t$2\t$3\t$4\n";
-         if ($1 < $flank-$jun and $2 > $flank+$jun){ ### perfect alignment cover 1000 bp of breakpoint
+         if ($1 < 1000-100 and $2 > 1000+100){ ### perfect alignment cover 200 bp of breakpoint
             $indel=0 unless ($indel == 1); ### indicate no SV exists
          }
       ### excise
       }elsif($match=~/Alignment:\n first\s+seq =>\s+\[\s*(\d+)\,\s*(\d+)\] EXCISED REGION \[\s*(\d+)\,\s*(\d+)\]\n\s+second seq \=\> \s+\[\s*(\d+)\,\s*(\d+)\] EXCISED REGION \[\s*(\d+)\,\s*(\d+)\]\n/){
          print "$1\t$2\t$3\t$4\t$5\t$6\t$7\t$8\n";
-         if ($1 < $flank-$jun and $4 > $flank+$jun){ ### excised alignment cover 200 bp of breakpoint
-            if ($2 <= $flank+$jun and $2 >= $flank-$jun and $3 <= $flank+$jun and $3 >= $flank-$jun){ ### excise region cover 100 bp of breakpoint
+         if ($1 < 1000-100 and $4 > 1000+100){ ### excised alignment cover 200 bp of breakpoint
+            if ($2 <= 1000+100 and $2 >= 1000-100 and $3 <= 1000+100 and $3 >= 1000-100){ ### excise region cover 100 bp of breakpoint
                print "SV Contig $contig: $6,$7\n";
-               $indel=1; ### indicate SV exists
+               #$indel=1; ### indicate SV exists
                my $seqlen=length $refseq->{$contig};
                my $start=$6 < $7 ? $6 : $7;
                my $len  =abs($7-$6+1);
@@ -399,14 +397,14 @@ while(<IN>){
                while($sequence=~/(N+)/g){
                   $gap+=length $1;
                }
-               if ($gap > $len*0.7){
+               if ($gap > $len*0.3){
                   $indel=3 unless ($indel == 1 or $indel == 0); ### too much unknown sequence in SV sequence, set to not sure
-               }elsif ($len < 20){
+               }elsif ($len < 10){
                   $indel=0 unless ($indel == 1); ### insertion sequence too small, probably not a SV
                }else{
                   $indel=1;
                }
-            }elsif(($1 <= $flank-$jun and $2 >= $flank+$jun) or ($3 <= $flank-$jun and $4 >= $flank+$jun)){
+            }elsif(($1 <= 1000-100 and $2 >= 1000+100) or ($3 <= 1000-100 and $4 >= 1000+100)){
                $indel=0 unless ($indel == 1); ### indicate no SV exists
             }else{
                $indel=3 unless ($indel == 1 or $indel == 0); ### indicate not sure

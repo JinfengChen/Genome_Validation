@@ -73,8 +73,8 @@ while(<IN1>){
 =cut
        if($heg4inf->[0] ne "NA"){ ###find target region, then refine to small region
           print "\nUse 2 kb flanking with same target\n";
-          $seq1=substr($refseq->{$unit[0]},$unit[1]-2000,2000);
-          $seq2=substr($refseq->{$unit[0]},$unit[2],2000);
+          $seq1=substr($refseq->{$unit[0]},$unit[1]-4000,4000);
+          $seq2=substr($refseq->{$unit[0]},$unit[2],4000);
           open OUT, ">$opt{project}.query.fa" or die "$!";
                print OUT ">$h1\n$seq1\n>$h2\n$seq2\n";
           close OUT;
@@ -99,8 +99,8 @@ while(<IN1>){
           }
        }else{
           print "\nUse 2 kb flanking with difference target\n";
-          $seq1=substr($refseq->{$unit[0]},$unit[1]-2000,2000);
-          $seq2=substr($refseq->{$unit[0]},$unit[2],2000);
+          $seq1=substr($refseq->{$unit[0]},$unit[1]-4000,4000);
+          $seq2=substr($refseq->{$unit[0]},$unit[2],4000);
           open OUT, ">$opt{project}.query.fa" or die "$!";
                print OUT ">$h1\n$seq1\n>$h2\n$seq2\n";
           close OUT;

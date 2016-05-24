@@ -57,7 +57,7 @@ while(<IN1>){
        open OUT, ">$opt{project}.query.fa" or die "$!";
        print OUT ">$h1\n$seq1\n>$h2\n$seq2\n";
        close OUT;
-       `/usr/bin/blastall -p blastn -U -i $opt{project}.query.fa -d $heg4 -o $opt{project}.blast -e 1e-5 -m 8`;
+       `/opt/linux/centos/7.x/x86_64/pkgs/ncbi-blast/2.2.26/bin/blastall -p blastn -U -i $opt{project}.query.fa -d $heg4 -o $opt{project}.blast -e 1e-5 -m 8 -a 24`;
        my $heg4inf=target("$opt{project}.blast","HEG4");
 =pod
        if ($heg4inf->[0] eq "NA"){
@@ -84,8 +84,8 @@ while(<IN1>){
           open OUT, ">$opt{project}.region.fa" or die "$!";
                print OUT ">$inf[1]:$inf[2]-$inf[3]\n$region\n";
           close OUT;
-          `/usr/bin/formatdb -i $opt{project}.region.fa -p F`;
-          `/usr/bin/blastall -p blastn -U -i $opt{project}.query.fa -d $opt{project}.region.fa -o $opt{project}.blast -e 1e-5 -m 8`;
+          `/opt/linux/centos/7.x/x86_64/pkgs/ncbi-blast/2.2.26/bin/formatdb -i $opt{project}.region.fa -p F`;
+          `/opt/linux/centos/7.x/x86_64/pkgs/ncbi-blast/2.2.26/bin/blastall -p blastn -U -i $opt{project}.query.fa -d $opt{project}.region.fa -o $opt{project}.blast -e 1e-5 -m 8 -a 24`;
           $heg4inf=target("$opt{project}.blast","HEG4");
           if ($heg4inf->[0] ne "NA"){ ### find smaller region
              my @new=@{$heg4inf};
@@ -109,8 +109,8 @@ while(<IN1>){
                print OUT ">$inf[1]\n$refheg4->{$inf[1]}\n";
                print OUT ">$inf[2]\n$refheg4->{$inf[2]}\n";
           close OUT; 
-          `/usr/bin/formatdb -i $opt{project}.region.fa -p F`;
-          `/usr/bin/blastall -p blastn -U -i $opt{project}.query.fa -d $opt{project}.region.fa -o $opt{project}.blast -e 1e-5 -m 8`;
+          `/opt/linux/centos/7.x/x86_64/pkgs/ncbi-blast/2.2.26/bin/formatdb -i $opt{project}.region.fa -p F`;
+          `/opt/linux/centos/7.x/x86_64/pkgs/ncbi-blast/2.2.26/bin/blastall -p blastn -U -i $opt{project}.query.fa -d $opt{project}.region.fa -o $opt{project}.blast -e 1e-5 -m 8 -a 24`;
           $heg4inf=target("$opt{project}.blast","HEG4");
        }
        my $heg4inf0=join("\t",@{$heg4inf});

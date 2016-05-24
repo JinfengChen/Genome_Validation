@@ -62,6 +62,7 @@ my $targetinf=readinf("$prefix.draw.inf");
 ###creat output gff file
 writefile("","$prefix.Check.gff");
 writefile("","$prefix.NoSV.gff");
+writefile("","$prefix.NoMatch.gff");
 writefile("","$prefix.LocalAssembly.gff");
 writefile("","$prefix.Manual.gff");
 ###
@@ -127,6 +128,7 @@ foreach my $p (sort keys %$sv){
          print CK "$temp\t$indel\t$type{$indel}\n";
       close CK;
       open NO, ">>$prefix.NoSV.gff" or die "$!";
+      open NM, ">>$prefix.NoMatch.gff" or die "$!";
       open LOCAL, ">>$prefix.LocalAssembly.gff" or die "$!";
       open MANUAL, ">>$prefix.Manual.gff" or die "$!";
       if ($indel > 0){ ### if indel exists
@@ -138,9 +140,12 @@ foreach my $p (sort keys %$sv){
             $sv->{$p}->[8].="INDEL=Deletion;Seq=$sequence;";
             my $line=join("\t",@{$sv->{$p}});
             print LOCAL "$line\n";
-         }else{ ### indel =3, need manual check
+         }elsif($indel == 3){ ### indel =3, need manual check
             my $line=join("\t",@{$sv->{$p}});
             print MANUAL "$line\n";
+         }elsif($indel == 4){
+            my $line=join("\t",@{$sv->{$p}});
+            print NM "$line\n";
          }
       }else{
          my $line=join("\t",@{$sv->{$p}});
@@ -155,6 +160,7 @@ foreach(sort {$a <=> $b} keys %summary){
       print STDERR "$_\t$summary{$_}\t$type{$_}\n";
 }
 sortfile("$prefix.NoSV.gff");
+sortfile("$prefix.NoMatch.gff");
 sortfile("$prefix.LocalAssembly.gff");
 sortfile("$prefix.Manual.gff");
 sortfile("$prefix.Check.gff");
@@ -364,8 +370,11 @@ my ($align,$target,$query)=@_;
 my $indel=3;
 my $sequence="NA";
 my $flank = 2000;
-my $jun   = 1000;
+my $jun   = 500;
 my $refseq=getfastaseq($query);
+if (exists $refseq->{'__'}){
+   $indel = 4;
+}
 $/="\n\n\n";
 open IN, "$align" or die "$!";
 while(<IN>){
@@ -390,7 +399,9 @@ while(<IN>){
          if ($1 < $flank-$jun and $4 > $flank+$jun){ ### excised alignment cover 200 bp of breakpoint
             if ($2 <= $flank+$jun and $2 >= $flank-$jun and $3 <= $flank+$jun and $3 >= $flank-$jun){ ### excise region cover 100 bp of breakpoint
                print "SV Contig $contig: $6,$7\n";
-               $indel=1; ### indicate SV exists
+               if (abs($7-$6) > 100){
+                   $indel=1; ### indicate SV exists
+               }
                my $seqlen=length $refseq->{$contig};
                my $start=$6 < $7 ? $6 : $7;
                my $len  =abs($7-$6+1);
